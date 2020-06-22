@@ -7,6 +7,137 @@ from rdkit.Chem import AllChem
 import rdkit
 from rdkit.Chem import Descriptors, Descriptors3D
 
+def _split(sm):
+    '''
+    function: Split SMILES into words. Care for Cl, Br, Si, Se, Na etc.
+    input: A SMILES
+    output: A string with space between words
+    '''
+    arr = []
+    i = 0
+    while i < len(sm)-1:
+        if not sm[i] in ['%', 'C', 'B', 'S', 'N', 'R', 'X', 'L', 'A', 'M', \
+                        'T', 'Z', 's', 't', 'H', '+', '-', 'K', 'F']:
+            arr.append(sm[i])
+            i += 1
+        elif sm[i]=='%':
+            arr.append(sm[i:i+3])
+            i += 3
+        elif sm[i]=='C' and sm[i+1]=='l':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='C' and sm[i+1]=='a':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='C' and sm[i+1]=='u':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='B' and sm[i+1]=='r':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='B' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='B' and sm[i+1]=='a':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='B' and sm[i+1]=='i':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='S' and sm[i+1]=='i':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='S' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='S' and sm[i+1]=='r':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='N' and sm[i+1]=='a':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='N' and sm[i+1]=='i':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='R' and sm[i+1]=='b':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='R' and sm[i+1]=='a':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='X' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='L' and sm[i+1]=='i':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='A' and sm[i+1]=='l':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='A' and sm[i+1]=='s':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='A' and sm[i+1]=='g':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='A' and sm[i+1]=='u':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='M' and sm[i+1]=='g':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='M' and sm[i+1]=='n':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='T' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='Z' and sm[i+1]=='n':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='s' and sm[i+1]=='i':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='s' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='t' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='H' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='+' and sm[i+1]=='2':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='+' and sm[i+1]=='3':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='+' and sm[i+1]=='4':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='-' and sm[i+1]=='2':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='-' and sm[i+1]=='3':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='-' and sm[i+1]=='4':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='K' and sm[i+1]=='r':
+            arr.append(sm[i:i+2])
+            i += 2
+        elif sm[i]=='F' and sm[i+1]=='e':
+            arr.append(sm[i:i+2])
+            i += 2
+        else:
+            arr.append(sm[i])
+            i += 1
+    if i == len(sm)-1:
+        arr.append(sm[i])
+    return ' '.join(arr)
+
 class CreateSymbolDataset(object):
     def __init__(self, smiles):
         self.smiles = smiles
@@ -17,23 +148,25 @@ class CreateSymbolDataset(object):
         max_size = max(map(len,self.smiles))
         return max_size
     
-    def _get_list_symbols(self):
+    def _get_list_symbols(self, splitter = None):
         symbols = set()
         for smile in self.smiles:
-            symbols = symbols.union(set(list(smile)))
+            if splitter:
+                symbols = symbols.union(set(list(smile.split(splitter))))
+            else:
+                symbols = symbols.union(set(list(smile)))
+                
         symbols = list(symbols)
 
         sym_idx = {symbols[i]:i for i in range(0,len(symbols))}
-        self.symbols = symbols
+        self.symbols = symbols 
         self.sym_idx = sym_idx
 
-    
     def get_symbols(self):
         return self.symbols
     
     def get_symbol_index(self):
         return self.sym_idx
-
 
 class BagOfWords(CreateSymbolDataset):
     def __init__(self,smiles):
@@ -67,6 +200,47 @@ class BagOfWords(CreateSymbolDataset):
 
         return count
 
+class BagOfWordsMols(CreateSymbolDataset):
+    def __init__(self, smiles):
+        super(BagOfWordsMols, self).__init__(smiles)
+        self.smiles = self._isolate_mols_from_smiles(smiles)
+        
+
+        
+    def _isolate_mols_from_smiles(self, smiles):
+        smiles = np.array([_split(smi) for smi in smiles])
+        return smiles
+        
+    def fit(self):
+        self._get_list_symbols(' ')
+        self.symbols.append('_unk_')
+        self.sym_idx['_unk_'] = len(self.symbols)-1
+        
+        count = np.zeros((self.N,len(self.symbols)))
+        
+        for i,smile in enumerate(self.smiles):
+            c = Counter(smile.split(' '))
+            c = {self.sym_idx[k]:v for k,v in c.items()}
+            for k,v in c.items():
+                count[i][k] = v
+        
+        return count
+    
+    def transform(self, smiles):
+        count = np.zeros((len(smiles),len(self.symbols)))
+
+        for i,smi in enumerate(smiles):
+            for char in smi:
+                if char in self.sym_idx.keys():
+                    count[i][self.sym_idx[char]]+=1
+                else:
+                    count[i][self.sym_idx['_unk_']]+=1
+
+        return count
+        
+        
+
+
 class VectorRepresentation(CreateSymbolDataset):
     def __init__(self,smiles):
         super(VectorRepresentation, self).__init__(smiles)
@@ -91,7 +265,7 @@ class VectorRepresentation(CreateSymbolDataset):
 
         return np.array(res)
 
-    def _smile_to_idx(self,     smile):
+    def _smile_to_idx(self, smile):
         vec = []
         for x in list(smile):
             if x in self.sym_idx.keys():
@@ -108,6 +282,56 @@ class VectorRepresentation(CreateSymbolDataset):
         return vec
 
     def transform(self, smiles):
+        temp = np.array(list(map(lambda x: self._smile_to_idx(x), smiles)))
+        return temp
+
+class VectorRepresentationMols(CreateSymbolDataset):
+    def __init__(self,smiles):
+        super(VectorRepresentationMols, self).__init__(smiles)
+        self.smiles = self._isolate_mols_from_smiles(smiles)
+
+    def _isolate_mols_from_smiles(self, smiles):
+        smiles = np.array([_split(smi) for smi in smiles])
+        return smiles
+    
+    def fit(self, max_len = None):
+        self._get_list_symbols(' ')
+        self.symbols.append('_unk_')
+        self.sym_idx['_unk_'] = len(self.symbols)-1
+        self.symbols.append('_pad_')
+        self.sym_idx['_pad_'] = len(self.symbols)-1
+
+        if max_len is None or max_len < self.max_size:
+            max_len = self.max_size
+
+        self.max_len = max_len
+
+        res = []
+        for smile in self.smiles:
+            temp = np.array(list(map(lambda x: self.sym_idx[x], smile.split(' '))))
+            temp = np.pad(temp, (0,self.max_len - len(temp)), mode='constant',constant_values=(self.sym_idx['_pad_']))
+            res.append(temp)
+
+        return np.array(res)
+
+    def _smile_to_idx(self, smile):
+        vec = []
+        for x in smile.split(' '):
+            if x in self.sym_idx.keys():
+                vec.append(self.sym_idx[x])
+            else:
+                vec.append(self.sym_idx['_unk_'])
+                
+        vec = np.array(vec)
+        if len(vec) > self.max_len:
+            vec = vec[:self.max_len]
+        elif len(vec) <= self.max_len:
+            vec = np.pad(vec, (0,self.max_len - len(vec)), mode='constant',constant_values=(self.sym_idx['_pad_']))
+                
+        return vec
+
+    def transform(self, smiles):
+        smiles = self._isolate_mols_from_smiles(smiles)
         temp = np.array(list(map(lambda x: self._smile_to_idx(x), smiles)))
         return temp
 
