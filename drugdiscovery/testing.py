@@ -1,28 +1,54 @@
+################
+# Author: Reza C Doobary
+#
+# dataintegrity.py
+#
+# The purpose of the script is provide a testing framework functionality for the purposes of computing the following metrics for all of the assays:
+#                           ['Precision','Recall', 'F1', 'AUPRC', 'Accuracy','Balanced Accuracy','ROC_AUC']
+#   as well as creating 12 precision-recall plots for the different targets.
+#
+################
+
+# Imports
 import numpy as np 
 import pandas as pd 
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, balanced_accuracy_score, roc_auc_score,average_precision_score
-
 from tqdm import tqdm_notebook, tqdm
-
 import matplotlib.pyplot as plt
 
-
-
-
-
 class panel_of_test(object):
-    def __init__(self, assays, X, y, notebook = True, sample_weights = None):
+    """
+    Class responsible for the panel of tests according to 'Precision','Recall', 'F1', 'AUPRC', 'Accuracy','Balanced Accuracy','ROC_AUC', 
+    and provides functionality for creating precision-recall curves, (subject to null weightings).
+
+    Basic usage:
+    >> targets = ['SR-HSE','NR-AR', 'SR-ARE', 'NR-Aromatase', 'NR-ER-LBD', 'NR-AhR', 'SR-MMP',\
+       'NR-ER', 'NR-PPAR-gamma', 'SR-p53', 'SR-ATAD5', 'NR-AR-LBD']
+    >> test_panel = panel_of_test(targets, X_test, y_test, sample_weights = mask_test)
+    >> y_score = model(torch.tensor(X_test).cuda().float()).cpu().detach().numpy()
+    >> y_pred = np.array(y_score>0.5)
+    >> metrics = test_panel.compute_basic_metrics(y_pred, y_score)
+
+     To produce the precision-recall plots do:
+    >>test_panel.plot_recall_precision(y_score, extra_index = False)
+    
+    """
+    def __init__(self, assays:np.array, X:np.array, y:np.array, notebook:bool = True, sample_weights:np.array = None):
         self.assays = assays
         self.X = X
         self.y = y
         self.notebook = notebook
         self.sample_weights = sample_weights 
         
-    def compute_basic_metrics(self, y_pred, y_score):
+    def compute_basic_metrics(self, y_pred:np.array, y_score:np.array)->pd.core.frame.DataFrame:
+        """
+        Computes the 'Precision','Recall', 'F1', 'AUPRC', 'Accuracy','Balanced Accuracy','ROC_AUC' for the predicted y's, and returns the results as
+        as dataframe. 
+        """
         
         result = pd.DataFrame(index = self.assays, columns = ['Precision','Recall', 'F1', 'AUPRC', 'Accuracy','Balanced Accuracy','ROC_AUC'])
-        #y_pred = self.model.predict(self.X)
+
         if self.notebook:
             t = tqdm_notebook(range(0,len(self.assays)), leave = True)
         else:
@@ -50,10 +76,12 @@ class panel_of_test(object):
         axs[i][j].set_ylabel('Precision')
         axs[i][j].set_title(assays[assay_idx])
     
-    def plot_recall_precision(self, y_pred_proba, extra_index = True):
+    def plot_recall_precision(self, y_pred_proba:np.array, extra_index:bool = True)->None:
+        """
+        Given the y scoring for a model, will print out the precision-recall curve.
+        """
+
         fig, axs = plt.subplots(4,3,figsize = (20,20))
-        
-        #self.y_pred_proba = model.predict_proba(X_test)
         
         for i in range(0,len(self.assays)):
             plot_index_I = int(i/3)

@@ -1,17 +1,31 @@
+################
+# Author: Reza C Doobary
+#
+# preprocessing.py
+#
+# The script provides functionality for various preprocessing steps used.
+################
+
+# Imports
 import numpy as np
 import pandas as pd 
 from collections import Counter
-from rdkit.Chem.Scaffolds import MurckoScaffold as MS
-from rdkit import Chem
-from rdkit.Chem import AllChem
-import rdkit
-from rdkit.Chem import Descriptors, Descriptors3D
 
-def _split(sm):
+# A Try-Except block is added for this script is used in the google colab environment - there we do not want to import rdkit unnecessarily since it is 
+# a non-trivial and best avoided if possible (i.e must use conda - cannot use standard pip)
+try: 
+  from rdkit.Chem.Scaffolds import MurckoScaffold as MS
+  from rdkit import Chem
+  from rdkit.Chem import AllChem
+except ModuleNotFoundError:
+  print('Continue if using colab and not planning to use rdkit')
+
+
+def _split(sm:str)->list:
     '''
-    function: Split SMILES into words. Care for Cl, Br, Si, Se, Na etc.
-    input: A SMILES
-    output: A string with space between words
+    This functions splits a smile, represented by a string into a list of atom components.
+
+    Note : This was not created by the author, but was taken from elsewhere - pending reference URL.
     '''
     arr = []
     i = 0
@@ -20,7 +34,7 @@ def _split(sm):
                         'T', 'Z', 's', 't', 'H', '+', '-', 'K', 'F']:
             arr.append(sm[i])
             i += 1
-        elif sm[i]=='%':
+        elif sm[i]=='%':  
             arr.append(sm[i:i+3])
             i += 3
         elif sm[i]=='C' and sm[i+1]=='l':
@@ -139,16 +153,26 @@ def _split(sm):
     return ' '.join(arr)
 
 class CreateSymbolDataset(object):
+    """
+    Base class responsibe for enumerating symbols (atoms) with the smile.
+    """
     def __init__(self, smiles):
         self.smiles = smiles
         self.max_size = self._get_max_size()
         self.N = len(self.smiles)
         
-    def _get_max_size(self):
+    def _get_max_size(self)->int:
+        """
+        Compute the size of each smile in self.smiles and finds the maximum size.
+        """
         max_size = max(map(len,self.smiles))
         return max_size
     
-    def _get_list_symbols(self, splitter = None):
+    def _get_list_symbols(self, splitter:str = None)->None:
+        """
+        Amagamates all smiles, finds the key set of symbols that make up all smiles
+        and creates a list of symbols and a symbol-index dictionary.
+        """
         symbols = set()
         for smile in self.smiles:
             if splitter:
@@ -169,10 +193,24 @@ class CreateSymbolDataset(object):
         return self.sym_idx
 
 class BagOfWords(CreateSymbolDataset):
-    def __init__(self,smiles):
+    """
+    Class responsible for creating a bag of words-like dataset based off by treating the characters of the smiles as individual symbols - thus,
+    this does not consider atoms in the chemistry sense.
+
+    Basic usage:
+
+    >> smiles = X_train_source['SMILES'].values
+    >> bow = pp.BagOfWords(smiles)
+    >> bow_train = bow.fit()
+    >> bow_test = bow.transform(X_test_source['SMILES'].values)
+    """
+    def __init__(self,smiles:list):
         super(BagOfWords, self).__init__(smiles)
     
-    def fit(self):
+    def fit(self)->np.array:
+        """
+        The main fit function, which counts the number of symbols within each smile and create a np.array of counts for each smile and symbol.
+        """
         self._get_list_symbols()
         self.symbols.append('_unk_')
         self.sym_idx['_unk_'] = len(self.symbols)-1
@@ -188,7 +226,10 @@ class BagOfWords(CreateSymbolDataset):
                 
         return count
 
-    def transform(self, smiles):
+    def transform(self, smiles:list)->np.array:
+        """
+        Transforms the smiles list subject to the fit function.
+        """
         count = np.zeros((len(smiles),len(self.symbols)))
 
         for i,smi in enumerate(smiles):
@@ -201,17 +242,34 @@ class BagOfWords(CreateSymbolDataset):
         return count
 
 class BagOfWordsMols(CreateSymbolDataset):
-    def __init__(self, smiles):
+    """
+    Class responsible for creating a bag of words-like dataset based off by symbols which are understood to be atoms by making use of the _split function.
+
+    Basic usage:
+
+    >> smiles = X_train_source['SMILES'].values
+    >> bow = pp.BagOfWordsMols(smiles)
+    >> bow_train = bow.fit()
+    >> bow_test = bow.transform(X_test_source['SMILES'].values)
+    """
+    def __init__(self, smiles:list):
         super(BagOfWordsMols, self).__init__(smiles)
+        # takes the smiles and applies the _split function to each smile in the list labelled smiles.
         self.smiles = self._isolate_mols_from_smiles(smiles)
         
 
-        
-    def _isolate_mols_from_smiles(self, smiles):
+    def _isolate_mols_from_smiles(self, smiles:list)->np.array:
+        """
+        Applies the splitter to all smiles in the list smiles.
+        """
         smiles = np.array([_split(smi) for smi in smiles])
         return smiles
         
     def fit(self):
+        """
+        The main fitting function - importantly and in distinction to the generic case, the list of symbols now has a splitting string ' ', since 
+        this has come from the use of the _split function.
+        """
         self._get_list_symbols(' ')
         self.symbols.append('_unk_')
         self.sym_idx['_unk_'] = len(self.symbols)-1
@@ -226,7 +284,7 @@ class BagOfWordsMols(CreateSymbolDataset):
         
         return count
     
-    def transform(self, smiles):
+    def transform(self, smiles:list)->mp.array:
         count = np.zeros((len(smiles),len(self.symbols)))
 
         for i,smi in enumerate(smiles):
@@ -238,116 +296,35 @@ class BagOfWordsMols(CreateSymbolDataset):
 
         return count
         
-        
 
-
-class VectorRepresentation(CreateSymbolDataset):
-    def __init__(self,smiles):
-        super(VectorRepresentation, self).__init__(smiles)
-    
-    def fit(self, max_len = None):
-        self._get_list_symbols()
-        self.symbols.append('_unk_')
-        self.sym_idx['_unk_'] = len(self.symbols)-1
-        self.symbols.append('_pad_')
-        self.sym_idx['_pad_'] = len(self.symbols)-1
-
-        if max_len is None or max_len < self.max_size:
-            max_len = self.max_size
-
-        self.max_len = max_len
-
-        res = []
-        for smile in self.smiles:
-            temp = np.array(list(map(lambda x: self.sym_idx[x], list(smile))))
-            temp = np.pad(temp, (0,self.max_len - len(temp)), mode='constant',constant_values=(self.sym_idx['_pad_']))
-            res.append(temp)
-
-        return np.array(res)
-
-    def _smile_to_idx(self, smile):
-        vec = []
-        for x in list(smile):
-            if x in self.sym_idx.keys():
-                vec.append(self.sym_idx[x])
-            else:
-                vec.append(self.sym_idx['_unk_'])
-                
-        vec = np.array(vec)
-        if len(vec) > self.max_len:
-            vec = vec[:self.max_len]
-        elif len(vec) <= self.max_len:
-            vec = np.pad(vec, (0,self.max_len - len(vec)), mode='constant',constant_values=(self.sym_idx['_pad_']))
-                
-        return vec
-
-    def transform(self, smiles):
-        temp = np.array(list(map(lambda x: self._smile_to_idx(x), smiles)))
-        return temp
-
-class VectorRepresentationMols(CreateSymbolDataset):
-    def __init__(self,smiles):
-        super(VectorRepresentationMols, self).__init__(smiles)
-        self.smiles = self._isolate_mols_from_smiles(smiles)
-
-    def _isolate_mols_from_smiles(self, smiles):
-        smiles = np.array([_split(smi) for smi in smiles])
-        return smiles
-    
-    def fit(self, max_len = None):
-        self._get_list_symbols(' ')
-        self.symbols.append('_unk_')
-        self.sym_idx['_unk_'] = len(self.symbols)-1
-        self.symbols.append('_pad_')
-        self.sym_idx['_pad_'] = len(self.symbols)-1
-
-        if max_len is None or max_len < self.max_size:
-            max_len = self.max_size
-
-        self.max_len = max_len
-
-        res = []
-        for smile in self.smiles:
-            temp = np.array(list(map(lambda x: self.sym_idx[x], smile.split(' '))))
-            temp = np.pad(temp, (0,self.max_len - len(temp)), mode='constant',constant_values=(self.sym_idx['_pad_']))
-            res.append(temp)
-
-        return np.array(res)
-
-    def _smile_to_idx(self, smile):
-        vec = []
-        for x in smile.split(' '):
-            if x in self.sym_idx.keys():
-                vec.append(self.sym_idx[x])
-            else:
-                vec.append(self.sym_idx['_unk_'])
-                
-        vec = np.array(vec)
-        if len(vec) > self.max_len:
-            vec = vec[:self.max_len]
-        elif len(vec) <= self.max_len:
-            vec = np.pad(vec, (0,self.max_len - len(vec)), mode='constant',constant_values=(self.sym_idx['_pad_']))
-                
-        return vec
-
-    def transform(self, smiles):
-        smiles = self._isolate_mols_from_smiles(smiles)
-        temp = np.array(list(map(lambda x: self._smile_to_idx(x), smiles)))
-        return temp
 
 class MorganFingerprints(CreateSymbolDataset):
-    def __init__(self, smiles):
+    """
+    Class that finds the morgan fingerprint for the smiles.
+
+    Basic usage:
+
+    >> smiles = data['SMILES'].values
+    >> mf = MorganFingerprints(smiles)
+    >> X = mf.transform(radius)
+    """
+    def __init__(self, smiles:list):
         super(MorganFingerprints, self).__init__(smiles)
         self.fingerprint_array = []
 
-    def get_bit_vector_from_smile(self, smile, radius):
-
+    def get_bit_vector_from_smile(self, smile:str, radius:int)->np.array:
+        """
+        Given a smile and a radius, rdkit is employed for the purpose of finding the fingerprint representation of the smile.
+        """
         mol = Chem.MolFromSmiles(smile)
         fingerprint = AllChem.GetMorganFingerprintAsBitVect(mol,radius)
         self.fingerprint_array.append(fingerprint)
         return np.array(list(fingerprint.ToBitString()),int)
 
-    def transform(self, radius = 2):
+    def transform(self, radius:int = 2)->np.array:
+        """
+        Implements the previous function self.get_bit_vector_from_smile for all of the smiles.
+        """
         result = []
         self.fingerprint_array = []
         for smile in self.smiles:
@@ -357,18 +334,28 @@ class MorganFingerprints(CreateSymbolDataset):
 
 
 class MurckoScaffold(CreateSymbolDataset):
-    def __init__(self, smiles):
+    """
+    This class finds the scaffolding for a given smiles, and applies it to a list of smiles - it is essentially a wrapper around the core
+    functionality of rdkit.
+
+    Basic usage:
+
+    >> smiles = data['SMILES'].values
+    >> ms = pp.MurckoScaffold(smiles)
+    >> X = ms.transform()
+    """
+    def __init__(self, smiles:list):
         super(MurckoScaffold, self).__init__(smiles)
         
-
-    def get_scaffold(self, smile):
+    def get_scaffold(self, smile:str)->str:
         return MS.MurckoScaffoldSmilesFromSmiles(smile)  
 
-    def transform(self):
+    def transform(self)->list:
         scaffold_smiles = np.array(list(map(self.get_scaffold,self.smiles)))
         return scaffold_smiles
 
-import numpy as np
+
+# the following is a list of molecular descriptors which are used by rdkit.
 all_descriptors = ['Asphericity',
  'Eccentricity',
  'InertialShapeFactor',
@@ -581,7 +568,17 @@ all_descriptors = ['Asphericity',
  'fr_urea']
 
 class MolecularDescriptors:
-    def __init__(self, smiles):
+    """
+    Class responsible for find the molecular descriptors of the smiles.
+
+    Basic usage:
+
+    >> mol = Chem.MolFromSmiles(smile) 
+    >> moldes = pp.MolecularDescriptors(mol)
+    >> res = moldes.compute_all(mol)
+
+    """
+    def __init__(self, smiles:list):
         self.smiles = smiles
         self.descriptors3d = ['Asphericity',
          'Eccentricity',
@@ -595,7 +592,7 @@ class MolecularDescriptors:
          'SpherocityIndex']
         self.descriptors = Descriptors._descList
         
-    def _get_3d_descriptors(self, mol):
+    def _get_3d_descriptors(self, mol)->dict:
         result = {}
         for func in self.descriptors3d:
             try:
@@ -605,7 +602,7 @@ class MolecularDescriptors:
             result[func] = value
         return result
     
-    def _get_descriptors(self, mol):
+    def _get_descriptors(self, mol)->dict:
         result = {}
         for name, func in self.descriptors:
             try:
@@ -615,7 +612,106 @@ class MolecularDescriptors:
             result[name] = value
         return result
     
-    def compute_all(self, mol):
+    def compute_all(self, mol)->list:
         result = self._get_3d_descriptors(mol)
         result.update(self._get_descriptors(mol))
         return result
+
+
+####### I will come back to commenting these functions - but they are under current developement and may change in due course.
+
+class VectorRepresentation(CreateSymbolDataset):
+    def __init__(self,smiles):
+        super(VectorRepresentation, self).__init__(smiles)
+    
+    def fit(self, max_len = None):
+        self._get_list_symbols()
+        self.symbols.append('_unk_')
+        self.sym_idx['_unk_'] = len(self.symbols)-1
+        self.symbols.append('_pad_')
+        self.sym_idx['_pad_'] = len(self.symbols)-1
+
+        if max_len is None or max_len < self.max_size:
+            max_len = self.max_size
+
+        self.max_len = max_len
+
+        res = []
+        for smile in self.smiles:
+            temp = np.array(list(map(lambda x: self.sym_idx[x], list(smile))))
+            temp = np.pad(temp, (0,self.max_len - len(temp)), mode='constant',constant_values=(self.sym_idx['_pad_']))
+            res.append(temp)
+
+        return np.array(res)
+
+    def _smile_to_idx(self,     smile):
+        vec = []
+        for x in list(smile):
+            if x in self.sym_idx.keys():
+                vec.append(self.sym_idx[x])
+            else:
+                vec.append(self.sym_idx['_unk_'])
+                
+        vec = np.array(vec)
+        if len(vec) > self.max_len:
+            vec = vec[:self.max_len]
+        elif len(vec) <= self.max_len:
+            vec = np.pad(vec, (0,self.max_len - len(vec)), mode='constant',constant_values=(self.sym_idx['_pad_']))
+                
+        return vec
+
+    def transform(self, smiles):
+        temp = np.array(list(map(lambda x: self._smile_to_idx(x), smiles)))
+        return temp
+
+
+class VectorRepresentationMols(CreateSymbolDataset):
+    def __init__(self,smiles):
+        super(VectorRepresentationMols, self).__init__(smiles)
+        self.smiles = self._isolate_mols_from_smiles(smiles)
+
+    def _isolate_mols_from_smiles(self, smiles):
+        smiles = np.array([_split(smi) for smi in smiles])
+        return smiles
+    
+    def fit(self, max_len = None):
+        self._get_list_symbols(' ')
+        self.symbols.append('_unk_')
+        self.sym_idx['_unk_'] = len(self.symbols)-1
+        self.symbols.append('_pad_')
+        self.sym_idx['_pad_'] = len(self.symbols)-1
+
+        if max_len is None or max_len < self.max_size:
+            max_len = self.max_size
+
+        self.max_len = max_len
+
+        res = []
+        for smile in self.smiles:
+            temp = np.array(list(map(lambda x: self.sym_idx[x], smile.split(' '))))
+            temp = np.pad(temp, (0,self.max_len - len(temp)), mode='constant',constant_values=(self.sym_idx['_pad_']))
+            res.append(temp)
+
+        return np.array(res)
+
+    def _smile_to_idx(self, smile):
+        vec = []
+        for x in smile.split(' '):
+            if x in self.sym_idx.keys():
+                vec.append(self.sym_idx[x])
+            else:
+                vec.append(self.sym_idx['_unk_'])
+                
+        vec = np.array(vec)
+        if len(vec) > self.max_len:
+            vec = vec[:self.max_len]
+        elif len(vec) <= self.max_len:
+            vec = np.pad(vec, (0,self.max_len - len(vec)), mode='constant',constant_values=(self.sym_idx['_pad_']))
+                
+        return vec
+
+    def transform(self, smiles):
+        smiles = self._isolate_mols_from_smiles(smiles)
+        temp = np.array(list(map(lambda x: self._smile_to_idx(x), smiles)))
+        return temp
+        

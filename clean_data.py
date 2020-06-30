@@ -1,3 +1,11 @@
+################
+# Author: Reza C Doobary
+#
+# clean_data.py
+#
+# This script cleans the initial file from the Tox-21 data challenge.
+################
+
 import drugdiscovery.dataintegrity as dataintegrity
 
 if __name__ == "__main__":
