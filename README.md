@@ -131,10 +131,10 @@ In this section the process of the project is described, this also describes the
               reg_lambda=None, scale_pos_weight=None, subsample=None,
               tree_method=None, validate_parameters=False, verbosity=None)
 
-    This is performed in `Benchmark_models.ipynb`, using a **bag of words** approach, where the results are also displayed. The result of the test set for the randon forest are:
+    This is performed in `Benchmark_models.ipynb`, using a **bag of words** approach, where the results are also displayed. The result of the test set for the random forest are:
 
 Assay| Precision |    Recall |       F1 |    AUPRC |   Accuracy |   Balanced Accuracy |   ROC_AUC 
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|---|
 SR-HSE        |    0.5      | 0.059322  | 0.106061 | 0.175205 |   0.946069 |            0.52797  |  0.52797  
 NR-AR         |    0.803922 | 0.418367  | 0.550336 | 0.530519 |   0.972709 |            0.707062 |  0.707062 
 SR-ARE        |    0.68254  | 0.133127  | 0.222798 | 0.454856 |   0.846861 |            0.560451 |  0.560451 
