@@ -284,7 +284,7 @@ class BagOfWordsMols(CreateSymbolDataset):
         
         return count
     
-    def transform(self, smiles:list)->mp.array:
+    def transform(self, smiles:list)->np.array:
         count = np.zeros((len(smiles),len(self.symbols)))
 
         for i,smi in enumerate(smiles):
