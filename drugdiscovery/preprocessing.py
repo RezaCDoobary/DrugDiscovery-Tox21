@@ -16,7 +16,7 @@ from collections import Counter
 try: 
   from rdkit.Chem.Scaffolds import MurckoScaffold as MS
   from rdkit import Chem
-  from rdkit.Chem import AllChem
+  from rdkit.Chem import AllChem, Descriptors
 except ModuleNotFoundError:
   print('Continue if using colab and not planning to use rdkit')
 
