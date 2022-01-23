@@ -74,7 +74,7 @@ def generate_murckoscaffold_from_source(data:pd.core.frame.DataFrame)->str:
     df.to_csv(output_file)
     return output_file
 
-def generate_morgan_fingerprints_from_scaffold(data::pd.core.frame.DataFrame, radius:int)->str:
+def generate_morgan_fingerprints_from_scaffold(data:pd.core.frame.DataFrame, radius:int)->str:
     """
     Generates the fingerprints for the scaffolds.
     """
