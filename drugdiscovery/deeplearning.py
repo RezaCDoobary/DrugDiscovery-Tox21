@@ -219,8 +219,8 @@ class Trainer:
             aucroc = self._average_scores(np_preds, y_val, roc_auc_score, weight_test.numpy())
 
             if epoch%print_every == 0:
-            print('Epoch [{}/{}] :: train loss: {:.6f} val loss: {:.6f} - val AUPRC: {:.3f} - val AUCROC :{:.3f}' 
-                .format(epoch,self.epochs,train_loss, validation_loss, auprc, aucroc))
+                print('Epoch [{}/{}] :: train loss: {:.6f} val loss: {:.6f} - val AUPRC: {:.3f} - val AUCROC :{:.3f}'
+                      .format(epoch,self.epochs,train_loss, validation_loss, auprc, aucroc))
 
             torch.save({
                 'epoch': epoch,
