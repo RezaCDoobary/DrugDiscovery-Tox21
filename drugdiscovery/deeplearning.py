@@ -232,11 +232,11 @@ class Trainer:
             # step 8. If early stop - then stop else print the current training loss, validation loss, and current AUPRC.
             if self.early_stopper:
                 if self.early_stopper.should_break(auprc):
-                print('Breaking due to lack of progress in the AUPRC every ' + str(self.early_stopper.patience))
-                return df
+                    print('Breaking due to lack of progress in the AUPRC every ' + str(self.early_stopper.patience))
+                    return df
 
             else:
-            print('\r', 'Epoch [{}/{}]'.format(epoch,self.epochs), end='')
+                print('\r', 'Epoch [{}/{}]'.format(epoch,self.epochs), end='')
             df.loc[epoch+1] = [train_loss, validation_loss.item(), auprc]
         return df
 
