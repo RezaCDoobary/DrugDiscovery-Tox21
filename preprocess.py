@@ -81,11 +81,11 @@ def generate_morgan_fingerprints_from_scaffold(data:pd.core.frame.DataFrame, rad
     print('Generating fingerprints for Murcko Scaffold data : ',radius)
 
     
-    scaffold_smiles = scaffold['MuckoScaffold'].values
+    scaffold_smiles = data['MuckoScaffold'].values
     mf = pp.MorganFingerprints(scaffold_smiles)
     X = mf.transform(radius)
     
-    df = pd.DataFrame(scaffold[['DSSTox_CID','SMILES','MuckoScaffold']])
+    df = pd.DataFrame(data[['DSSTox_CID','SMILES','MuckoScaffold']])
     N,p = X.shape
     for i in tqdm(range(0,p)):
         df['fp_'+str(i+1)] = X[:,i]
